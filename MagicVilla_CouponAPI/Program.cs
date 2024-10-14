@@ -1,8 +1,10 @@
 using AutoMapper;
+using FluentValidation;
 using MagicVilla_CouponAPI;
 using MagicVilla_CouponAPI.Data;
 using MagicVilla_CouponAPI.Data.DTO;
 using MagicVilla_CouponAPI.Models;
+using MagicVilla_CouponAPI.Validations;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(MappingConfig));
+builder.Services.AddScoped<IValidator<CouponCreateDTO>, CouponCreateValidation>();
 
 var app = builder.Build();
 
@@ -29,7 +32,7 @@ app.MapGet("/api/v1/coupons", (ILogger<Program> _logger) =>
 }).WithName("GetCoupons")
 .Produces<List<Coupon>>(200);
 
-app.MapGet("/api/v1/coupon/{id: int}", ([FromRoute] int id) =>
+app.MapGet("/api/v1/coupon/{ind:int}", ([FromRoute] int id) =>
 {
     var coupon = CouponStore.coupons.FirstOrDefault(c => c.Id == id);
     if (coupon == null)
@@ -41,11 +44,12 @@ app.MapGet("/api/v1/coupon/{id: int}", ([FromRoute] int id) =>
 .Produces<Coupon>(200)
 .Produces(400);
 
-app.MapPost("/api/v1/coupon", (IMapper _mapper, [FromBody] CouponCreateDTO couponDTO) =>
+app.MapPost("/api/v1/coupon", (IMapper _mapper, IValidator<CouponCreateDTO> _validator, [FromBody] CouponCreateDTO couponDTO) =>
 {
-    if( string.IsNullOrEmpty(couponDTO.Name))
+    var validationResult = _validator.Validate(couponDTO);
+    if(!validationResult.IsValid)
     {
-        return Results.BadRequest("Invalid data");
+        return Results.BadRequest(validationResult.Errors.FirstOrDefault().ToString());
     }
 
     if(CouponStore.coupons.FirstOrDefault(c => c.Name.ToLower() == couponDTO.Name.ToLower()) != null)
@@ -65,7 +69,7 @@ app.MapPost("/api/v1/coupon", (IMapper _mapper, [FromBody] CouponCreateDTO coupo
 .Produces<CouponDTO>(201)
 .Produces(400);
 
-app.MapPut("/api/v1/coupon/{id: int}", ([FromRoute] int id, [FromBody] Coupon coupon) =>
+app.MapPut("/api/v1/coupon/{id:int}", ([FromRoute] int id, [FromBody] Coupon coupon) =>
 {
     var existingCoupon = CouponStore.coupons.FirstOrDefault(c => c.Id == id);
     if (existingCoupon == null)
@@ -81,7 +85,7 @@ app.MapPut("/api/v1/coupon/{id: int}", ([FromRoute] int id, [FromBody] Coupon co
 .Produces(200)
 .Produces(404);
 
-app.MapDelete("/api/v1/coupon/{id: int}", ([FromRoute] int id) =>
+app.MapDelete("/api/v1/coupon/{ind:int}", ([FromRoute] int id) =>
 {
     var existingCoupon = CouponStore.coupons.FirstOrDefault(c => c.Id == id);
     if (existingCoupon == null)
