@@ -1,3 +1,4 @@
+using AutoMapper;
 using MagicVilla_CouponAPI;
 using MagicVilla_CouponAPI.Data;
 using MagicVilla_CouponAPI.Data.DTO;
@@ -40,18 +41,25 @@ app.MapGet("/api/v1/coupon/{id: int}", ([FromRoute] int id) =>
 .Produces<Coupon>(200)
 .Produces(400);
 
-app.MapPost("/api/v1/coupon", ([FromBody] CouponCreateDTO couponDTO) =>
+app.MapPost("/api/v1/coupon", (IMapper _mapper, [FromBody] CouponCreateDTO couponDTO) =>
 {
-    CouponDTO coupon = new CouponDTO
+    if( string.IsNullOrEmpty(couponDTO.Name))
     {
-        Name = couponDTO.Name,
-        Percent = couponDTO.Percent,
-        IsActive = couponDTO.IsActive,
-    };
+        return Results.BadRequest("Invalid data");
+    }
+
+    if(CouponStore.coupons.FirstOrDefault(c => c.Name.ToLower() == couponDTO.Name.ToLower()) != null)
+    {
+        return Results.BadRequest("Coupon already exists");
+    }
+
+    Coupon coupon = _mapper.Map<Coupon>(couponDTO);
     coupon.Id = CouponStore.coupons.Max(c => c.Id) + 1;
     coupon.Created = DateTime.Now;
-    //CouponStore.coupons.Add(coupon);
-    return Results.CreatedAtRoute("GetCoupon", new { id = coupon.Id }, coupon);
+
+    CouponStore.coupons.Add(coupon);
+
+    return Results.CreatedAtRoute("GetCoupon", new { id = coupon.Id }, _mapper.Map<CouponCreateDTO>(coupon));
 }).WithName("CreateCoupon")
 .Accepts<CouponDTO>("application/json")
 .Produces<CouponDTO>(201)
