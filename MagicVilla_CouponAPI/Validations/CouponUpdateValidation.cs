@@ -3,10 +3,11 @@ using MagicVilla_CouponAPI.Models.DTO;
 
 namespace MagicVilla_CouponAPI.Validations
 {
-    public class CouponCreateValidation: AbstractValidator<CouponCreateDTO>
+    public class CouponUpdateValidation: AbstractValidator<CouponUpdateDTO>
     {
-        public CouponCreateValidation()
+        public CouponUpdateValidation()
         {
+            RuleFor(c => c.Id).NotEmpty();
             RuleFor(c => c.Name).NotEmpty().MaximumLength(50);
             RuleFor(c => c.Percent).InclusiveBetween(0, 100);
         }

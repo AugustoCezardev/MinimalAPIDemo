@@ -1,4 +1,4 @@
-﻿namespace MagicVilla_CouponAPI.Data.DTO
+﻿namespace MagicVilla_CouponAPI.Models.DTO
 {
     public class CouponDTO
     {

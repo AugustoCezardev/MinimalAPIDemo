@@ -2,8 +2,8 @@ using AutoMapper;
 using FluentValidation;
 using MagicVilla_CouponAPI;
 using MagicVilla_CouponAPI.Data;
-using MagicVilla_CouponAPI.Data.DTO;
 using MagicVilla_CouponAPI.Models;
+using MagicVilla_CouponAPI.Models.DTO;
 using MagicVilla_CouponAPI.Validations;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -16,6 +16,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 builder.Services.AddScoped<IValidator<CouponCreateDTO>, CouponCreateValidation>();
+builder.Services.AddScoped<IValidator<CouponUpdateDTO>, CouponUpdateValidation>();
 
 var app = builder.Build();
 
@@ -96,29 +97,37 @@ app.MapPost("/api/v1/coupon", (IMapper _mapper, IValidator<CouponCreateDTO> _val
 .Produces<APIResponse>(201)
 .Produces(400);
 
-app.MapPut("/api/v1/coupon/{id:int}", (int id, [FromBody] Coupon coupon) =>
+app.MapPut("/api/v1/coupon/{id:int}", (IMapper _mapper, IValidator<CouponUpdateDTO> _validator, int id, [FromBody] CouponUpdateDTO coupon) =>
 {
-    APIResponse response = new APIResponse();
+    APIResponse response = new APIResponse() { IsSuccess = false, StatusCode = HttpStatusCode.BadRequest };
+
+    var validationResult = _validator.Validate(coupon);
+
+    if(!validationResult.IsValid)
+    {
+        response.ErrorMessages = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+        return Results.BadRequest(response);
+    }
 
     var existingCoupon = CouponStore.coupons.FirstOrDefault(c => c.Id == id);
     if (existingCoupon == null)
     {
-        response.IsSuccess = false;
-        response.StatusCode = HttpStatusCode.BadRequest;
         response.ErrorMessages.Add("Coupon not found");
         return Results.BadRequest(response);
     }
+
     existingCoupon.Name = coupon.Name;
     existingCoupon.Percent = coupon.Percent;
     existingCoupon.IsActive = coupon.IsActive;
     existingCoupon.LastUpdated = DateTime.Now;
 
     response.IsSuccess = true;
-    response.Result = existingCoupon;
+    response.Result = _mapper.Map<CouponUpdateDTO>(existingCoupon);
     response.StatusCode = HttpStatusCode.OK;
 
-    return Results.Ok(existingCoupon);
+    return Results.Ok(response);
 }).WithName("UpdateCoupon")
+.Accepts<CouponUpdateDTO>("application/json")
 .Produces<APIResponse>(200)
 .Produces(400);
 
@@ -136,7 +145,7 @@ app.MapDelete("/api/v1/coupon/{ind:int}", (int id) =>
     CouponStore.coupons.Remove(existingCoupon);
 
     response.IsSuccess = true;
-    response.StatusCode = HttpStatusCode.OK;
+    response.StatusCode = HttpStatusCode.NoContent;
 
     return Results.Ok(response);
 }).WithName("DeletCoupon")
