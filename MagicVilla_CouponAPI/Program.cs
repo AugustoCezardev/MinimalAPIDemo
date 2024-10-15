@@ -42,7 +42,7 @@ app.MapGet("/api/v1/coupons", (ILogger<Program> _logger) =>
 }).WithName("GetCoupons")
 .Produces<APIResponse>(200);
 
-app.MapGet("/api/v1/coupon/{ind:int}", (int id) =>
+app.MapGet("/api/v1/coupon/{id:int}", (int id) =>
 {
     APIResponse response = new APIResponse();
 
@@ -131,18 +131,17 @@ app.MapPut("/api/v1/coupon/{id:int}", (IMapper _mapper, IValidator<CouponUpdateD
 .Produces<APIResponse>(200)
 .Produces(400);
 
-app.MapDelete("/api/v1/coupon/{ind:int}", (int id) =>
+app.MapDelete("/api/v1/coupon/{id:int}", (int id) =>
 {
     APIResponse response = new APIResponse();
     var existingCoupon = CouponStore.coupons.FirstOrDefault(c => c.Id == id);
-    if (existingCoupon == null)
+    if (!CouponStore.coupons.Remove(existingCoupon))
     {
         response.IsSuccess = false;
         response.StatusCode = HttpStatusCode.BadRequest;
         response.ErrorMessages.Add("Coupon not found");
         return Results.BadRequest(response);
     }
-    CouponStore.coupons.Remove(existingCoupon);
 
     response.IsSuccess = true;
     response.StatusCode = HttpStatusCode.NoContent;
